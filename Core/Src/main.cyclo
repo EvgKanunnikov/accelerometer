@@ -1,0 +1,12 @@
+main.c:23:5:main	1
+main.c:41:6:SystemClock_Config	1
+main.c:72:13:MX_SPI1_Init	1
+main.c:88:13:MX_GPIO_Init	1
+main.c:107:9:SPI1_WriteRead	1
+main.c:114:8:Accel_Read_1Byte	1
+main.c:125:6:Accel_Write_1Byte	1
+main.c:133:6:Accel_Init	1
+main.c:142:6:Get_XYZ	2
+main.c:154:6:Transmit_to_PC	1
+main.c:162:6:Get_Package_Data	2
+main.c:180:9:Get_CRC	4
