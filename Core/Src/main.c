@@ -5,8 +5,8 @@
 
 SPI_HandleTypeDef hspi1;
 
-#define CS_LOW()				 HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
-#define CS_HIGH()	             HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 1)
+#define CS_LOW() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
+#define CS_HIGH() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 1)
 
 int8_t Accel_Read_1Byte(uint8_t readAddr);
 uint8_t SPI1_WriteRead(uint8_t byte);
