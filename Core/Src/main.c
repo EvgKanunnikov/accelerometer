@@ -1,65 +1,11 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_device.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h"
-
 #include <math.h>
-/* USER CODE END Includes */
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_SPI1_Init(void);
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-#define CS_LOW()				       HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
+#define CS_LOW()				 HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
 #define CS_HIGH()	             HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 1)
 
 int8_t Accel_Read_1Byte(uint8_t readAddr);
@@ -70,70 +16,30 @@ void Get_XYZ(int16_t value[3]);
 void Transmit_to_PC(int16_t data16bit[3]);
 void Get_Package_Data(int16_t data16bitAccel[3], uint8_t* package);
 uint8_t Get_CRC(uint8_t* package, uint8_t len);
-void echo(void);
-/* USER CODE END 0 */
 
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_SPI1_Init(void);
+
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-//  int16_t res_mg[3] = {0, 0, 0};
-//  Accel_Init();
-//  uint8_t inp[] = {206, 250, 00, 18, 00, 18, 3, 204, 153};
-//  uint8_t z = Get_CRC(inp, 9);
+  int16_t res_mg[3] = {0, 0, 0};
+  Accel_Init();
 
   while (1)
   {
-//	  Get_XYZ(res_mg);
-//	  Transmit_to_PC(res_mg);
-//	  HAL_Delay(25);
-
-//
-//	  echo();
-//	  HAL_Delay(500);
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
+	  Get_XYZ(res_mg);
+	  Transmit_to_PC(res_mg);
+	  HAL_Delay(25);
   }
-  /* USER CODE END 3 */
 }
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -175,21 +81,8 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
 static void MX_SPI1_Init(void)
 {
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-										//SPI_POLARITY_LOW SPI_PHASE_2EDGE!!!!!!
-  /* USER CODE END SPI1_Init 1 */
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
@@ -207,22 +100,11 @@ static void MX_SPI1_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
 }
 
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -239,11 +121,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
 }
 
-/* USER CODE BEGIN 4 */
 uint8_t SPI1_WriteRead(uint8_t byte) {
   uint8_t rxData = 0;
   HAL_SPI_TransmitReceive(&hspi1, &byte, &rxData, 1, 1000);
@@ -252,7 +131,7 @@ uint8_t SPI1_WriteRead(uint8_t byte) {
 
 int8_t Accel_Read_1Byte(uint8_t readAddr) {
   uint8_t rx = 0;
-  readAddr |= 0x80; //1000 0000 Вкл чтения из акселерометра
+  readAddr |= 0x80; 
   CS_LOW();
   SPI1_WriteRead(readAddr);
   rx = SPI1_WriteRead(0);
@@ -272,26 +151,25 @@ void Accel_Init(void) {
 	uint8_t value = 0x00;
 	value |= 0x40 | 0x7;
 	Accel_Write_1Byte(ctrl_reg1, value);
-	//Accel_Write_1Byte(0x21, 0x0);//0x1D reg2 FDS=1 HP_FF_W==11 HP_coef=01
 }
-//когда лежит ровно Z>1000 X&&Y=0-18
+
+
 void Get_XYZ(int16_t value[3]) {
 	int16_t sens = 18; // mg/digit
 	for (size_t i = 0; i < 3; i++) {
 		value[i] = round(Accel_Read_1Byte(0x29 + 2*i) * sens); //g
-		//делю на 10, чтобы результат влез в 8 бит
 	}
 }
 
 //transfer counter
 uint8_t num_of_package = 0;
 
-//void Transmit_to_PC(int16_t data16bit[3]) {
-//	uint8_t package[10];
-//	Get_Package_Data(data16bit, package);
-//	CDC_Transmit_FS(package, 10);
-//	num_of_package++;
-//}
+void Transmit_to_PC(int16_t data16bit[3]) {
+	uint8_t package[10];
+	Get_Package_Data(data16bit, package);
+	CDC_Transmit_FS(package, 10);
+	num_of_package++;
+}
 
 
 void Get_Package_Data(int16_t data16bitAccel[3], uint8_t* package) {
@@ -322,19 +200,6 @@ uint8_t Get_CRC(uint8_t* package, uint8_t len) {
 	return crc;
 }
 
-//void echo(void) {
-//	uint8_t b[5];
-//	uint8_t tr[5] = {1, 2, 3, 4, 5};
-//	CDC_Transmit_FS(tr, 5);
-//	CDC_Receive_FS(b, 5);
-//}
-
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
