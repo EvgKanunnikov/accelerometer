@@ -4,8 +4,14 @@
 #include <math.h>
 
 SPI_HandleTypeDef hspi1;
+TIM_HandleTypeDef htim6;
 
-#define CS_LOW()				 HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_TIM6_Init(void);
+
+#define CS_LOW()				       HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 0)
 #define CS_HIGH()	             HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, 1)
 
 int8_t Accel_Read_1Byte(uint8_t readAddr);
@@ -17,10 +23,6 @@ void Transmit_to_PC(int16_t data16bit[3]);
 void Get_Package_Data(int16_t data16bitAccel[3], uint8_t* package);
 uint8_t Get_CRC(uint8_t* package, uint8_t len);
 
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_SPI1_Init(void);
-
 int main(void)
 {
   HAL_Init();
@@ -28,10 +30,12 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
-
-  int16_t res_mg[3] = {0, 0, 0};
+  MX_TIM6_Init();
   Accel_Init();
 
+  HAL_TIM_Base_Start_IT(&htim6);
+
+  int16_t res_mg[3] = {0, 0, 0};
   while (1)
   {
 	  Get_XYZ(res_mg);
@@ -40,6 +44,10 @@ int main(void)
   }
 }
 
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -81,9 +89,13 @@ void SystemClock_Config(void)
   }
 }
 
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_SPI1_Init(void)
 {
-  /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
@@ -100,8 +112,40 @@ static void MX_SPI1_Init(void)
   {
     Error_Handler();
   }
+
 }
 
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 1679;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 49999;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -110,9 +154,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PE3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
@@ -121,17 +169,34 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PD13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 }
 
+//a function that is automatically called when an interrupt from the timer appears 6
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance == TIM6) //check if the interrupt comes from TIM1
+	{
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
+	}
+}
+
+//reads and sends one byte to the accelerometer
 uint8_t SPI1_WriteRead(uint8_t byte) {
   uint8_t rxData = 0;
   HAL_SPI_TransmitReceive(&hspi1, &byte, &rxData, 1, 1000);
   return rxData;
 }
 
+//reads one byte from the accelerometer
 int8_t Accel_Read_1Byte(uint8_t readAddr) {
   uint8_t rx = 0;
-  readAddr |= 0x80; 
+  readAddr |= 0x80; //1000 0000 enabling reading from the accelerometer
   CS_LOW();
   SPI1_WriteRead(readAddr);
   rx = SPI1_WriteRead(0);
@@ -139,6 +204,7 @@ int8_t Accel_Read_1Byte(uint8_t readAddr) {
   return rx;
 }
 
+//sends one byte to the accelerometer
 void Accel_Write_1Byte(uint8_t writeAddr, uint8_t data) {
   CS_LOW();
   SPI1_WriteRead(writeAddr);
@@ -146,6 +212,7 @@ void Accel_Write_1Byte(uint8_t writeAddr, uint8_t data) {
   CS_HIGH();
 }
 
+//initial setup of the LIS302DLH accelerometer
 void Accel_Init(void) {
 	uint8_t ctrl_reg1 = 0x20;
 	uint8_t value = 0x00;
@@ -153,7 +220,8 @@ void Accel_Init(void) {
 	Accel_Write_1Byte(ctrl_reg1, value);
 }
 
-
+//reads the acceleration value along 3 axes
+//returns values by pointer
 void Get_XYZ(int16_t value[3]) {
 	int16_t sens = 18; // mg/digit
 	for (size_t i = 0; i < 3; i++) {
@@ -164,6 +232,7 @@ void Get_XYZ(int16_t value[3]) {
 //transfer counter
 uint8_t num_of_package = 0;
 
+//transfers 1 data packet to the computer via USB
 void Transmit_to_PC(int16_t data16bit[3]) {
 	uint8_t package[10];
 	Get_Package_Data(data16bit, package);
@@ -171,7 +240,11 @@ void Transmit_to_PC(int16_t data16bit[3]) {
 	num_of_package++;
 }
 
-
+//generates a data package
+//the first two bytes are initial
+//then 6 bytes for acceleration
+//2 bytes for the high bits and 2 for the low bits
+//then a byte transfer counter, 8 bits CRC
 void Get_Package_Data(int16_t data16bitAccel[3], uint8_t* package) {
 	//bytes indicating the start of transmission
 	package[0] = 0xCE;
@@ -189,6 +262,7 @@ void Get_Package_Data(int16_t data16bitAccel[3], uint8_t* package) {
 	package[9] = Get_CRC(package, 9);
 }
 
+//generates an 8 bit CRC for 9 bytes of data
 uint8_t Get_CRC(uint8_t* package, uint8_t len) {
 	uint8_t crc = 0x00, poly = 0x07;
 	while(len--) {
@@ -200,6 +274,10 @@ uint8_t Get_CRC(uint8_t* package, uint8_t len) {
 	return crc;
 }
 
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
